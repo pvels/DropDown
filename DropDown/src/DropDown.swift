@@ -40,6 +40,31 @@ extension UIBarButtonItem: AnchorView {
 
 }
 
+
+class MaskedView: UIView {
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        
+        let shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: layer.cornerRadius)
+        layer.shadowPath = shadowPath.cgPath
+    }
+    
+    
+}
+
+class PassthroughView: UIView {
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+      
+        for view in subviews {
+            if !view.isHidden, view.point(inside: convert(point, to: view), with: event) {
+                return true
+            }
+        }
+        return false
+    }
+}
+
+
 /// A Material Design drop down in replacement for `UIPickerView`.
 public final class DropDown: UIView {
 
@@ -80,7 +105,7 @@ public final class DropDown: UIView {
 
 	//MARK: UI
 	fileprivate let dismissableView = UIView()
-	fileprivate let tableViewContainer = UIView()
+	fileprivate let tableViewContainer = MaskedView()
 	fileprivate let tableView = UITableView()
 	fileprivate var templateCell: DropDownCell!
     fileprivate lazy var arrowIndication: UIImageView = {
@@ -569,11 +594,15 @@ extension DropDown {
 		widthConstraint.constant = layout.width
 		heightConstraint.constant = layout.visibleHeight
 
+        tableView.scrollIndicatorInsets.top = self.cornerRadius / 2
+        tableView.scrollIndicatorInsets.bottom = self.cornerRadius / 2
+        
 		tableView.isScrollEnabled = layout.offscreenHeight > 0
 
 		DispatchQueue.main.async { [weak self] in
 			self?.tableView.flashScrollIndicators()
 		}
+        tableViewContainer.setNeedsDisplay()
 
 		super.updateConstraints()
 	}
@@ -645,10 +674,14 @@ extension DropDown {
 		// When orientation changes, layoutSubviews is called
 		// We update the constraint to update the position
 		setNeedsUpdateConstraints()
+        
 
-		let shadowPath = UIBezierPath(roundedRect: tableViewContainer.bounds, cornerRadius: cornerRadius)
-		tableViewContainer.layer.shadowPath = shadowPath.cgPath
 	}
+    
+    public override func draw(_ rect: CGRect) {
+        super.draw(rect)
+  
+    }
 
 	fileprivate func computeLayout() -> (x: CGFloat, y: CGFloat, width: CGFloat, offscreenHeight: CGFloat, visibleHeight: CGFloat, canBeDisplayed: Bool, Direction: Direction) {
 		var layout: ComputeLayoutTuple = (0, 0, 0, 0)
@@ -958,6 +991,7 @@ extension DropDown {
 		DispatchQueue.executeOnMainThread {
 			self.tableView.reloadData()
 			self.setNeedsUpdateConstraints()
+            self.layoutIfNeeded()
 		}
 	}
 
